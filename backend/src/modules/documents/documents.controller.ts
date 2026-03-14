@@ -30,9 +30,14 @@ export class DocumentsController {
   }
 
   @Get()
-  async findAll(@CurrentUser() user: User) {
-    return this.documentsService.findAll(user);
+  async findAll(
+    @CurrentUser() user: any,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ) {
+    return this.documentsService.findAll(user, +page, +limit);
   }
+
 
   @Get(':id')
   async findOne(

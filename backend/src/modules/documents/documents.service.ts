@@ -43,11 +43,15 @@ export class DocumentsService {
     return savedDocument;
   }
 
-  async findAll(user: User): Promise<Document[]> {
-    return this.documentRepository.find({
+  async findAll(user: User, page: number = 1, limit: number = 10): Promise<{ items: Document[], total: number }> {
+    const [items, total] = await this.documentRepository.findAndCount({
       where: { userId: user.id },
       order: { createdAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+
+    return { items, total };
   }
 
   async findOne(id: string, user: User): Promise<Document> {
