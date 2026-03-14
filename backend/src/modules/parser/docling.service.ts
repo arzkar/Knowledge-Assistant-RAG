@@ -19,7 +19,7 @@ export class DoclingService {
   constructor(private readonly configService: ConfigService) {
     this.baseUrl = this.configService.get<string>(
       'DOCLING_URL',
-      'http://docling:8000',
+      'http://docling:5001',
     );
   }
 
