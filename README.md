@@ -47,9 +47,14 @@ cp backend/.env.example backend/.env
 ```
 
 ### 3. Run with Docker
-Start all services (Postgres, Redis, Qdrant, OpenSearch, Docling, Ollama, Backend, Frontend):
+Start all services in **Production Mode** (Optimized, no hot-reload):
 ```bash
 docker compose up --build
+```
+
+Start all services in **Development Mode** (Hot-reloading enabled):
+```bash
+docker compose -f docker-compose.dev.yml up --build
 ```
 
 ### 4. Local Development (NPM)
