@@ -47,3 +47,4 @@ opensearch-data/
 
 # Better-Auth temporary files
 .better-auth/
+/docs/internal
