@@ -8,6 +8,7 @@ export class OllamaProvider implements ILLMProvider {
   private readonly logger = new Logger(OllamaProvider.name);
   private readonly ollama: Ollama;
   private readonly model: string;
+  private readonly embedModel: string;
 
   constructor(private readonly configService: ConfigService) {
     const host = this.configService.get<string>(
@@ -16,6 +17,10 @@ export class OllamaProvider implements ILLMProvider {
     );
     this.ollama = new Ollama({ host });
     this.model = this.configService.get<string>('OLLAMA_MODEL', 'llama3');
+    this.embedModel = this.configService.get<string>(
+      'OLLAMA_EMBED_MODEL',
+      'nomic-embed-text',
+    );
   }
 
   async generate(prompt: string, systemPrompt?: string): Promise<string> {
@@ -62,6 +67,40 @@ export class OllamaProvider implements ILLMProvider {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Ollama stream error: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  async embed(text: string): Promise<number[]> {
+    try {
+      const response = await this.ollama.embeddings({
+        model: this.embedModel,
+        prompt: text,
+      });
+      return response.embedding;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Ollama embedding error: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    try {
+      const embeddings: number[][] = [];
+      for (const text of texts) {
+        const response = await this.ollama.embeddings({
+          model: this.embedModel,
+          prompt: text,
+        });
+        embeddings.push(response.embedding);
+      }
+      return embeddings;
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      this.logger.error(`Ollama batch embedding error: ${errorMessage}`);
       throw error;
     }
   }
