@@ -37,8 +37,9 @@ All notable changes to the Knowledge Assistant project will be documented in thi
 - **Parser & Extraction**
   - [ ] Implement `DoclingService` for PDF/MD/TXT extraction
   - [ ] Implement LLM-based metadata extraction (Title, Summary, Keywords)
-- **Ingestion Saga**
-  - [ ] Build `PipelineService` state machine (11 stages)
+- **Ingestion Saga (BullMQ)**
+  - [ ] Set up Redis and BullMQ for task queueing
+  - [ ] Build `PipelineService` state machine (11 stages) as queue workers
   - [ ] Implement saga resume/checkpoint logic using `DocumentStatus`
   - [ ] Set up asynchronous background processing for uploads
 - **Chunking & Contextualization**
@@ -55,9 +56,10 @@ All notable changes to the Knowledge Assistant project will be documented in thi
   - [ ] Integrate Cohere `rerank-v3.5` for second-stage reranking
 
 ### Phase 4: Frontend Implementation
-- **Authentication**
+- **Authentication & State**
   - [ ] Integrate Better-Auth client in `frontend/src/lib/auth-client.ts`
-  - [ ] Build Login/Signup pages using shadcn/ui
+  - [ ] Setup Zustand for global state management
+  - [ ] Build Login/Signup pages using shadcn/ui & react-hook-form + Zod
   - [ ] Implement protected route guards for `/documents` and `/query`
 - **Document Management**
   - [ ] Build document upload component (Drag & Drop + Progress)

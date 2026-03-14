@@ -58,7 +58,8 @@ The `PipelineService` orchestrates these stages. Each stage is a separate class/
 - **Data**: Vector + Payload (`chunkId`, `documentId`, `text`, `metadata`).
 
 ## 4. Operational Rules
-- **Resume-ability**: If a document is in `CHUNKED` status, the `PipelineService.run(docId)` will skip stages 1-5 and start at `CONTEXTUALIZE`.
-- **Async Execution**: Ingestion MUST NOT block the request thread. The controller calls `ingestionService.run(docId)` and returns a `202 Accepted`.
-- **Concurrency**: Managed via `INGESTION_CONCURRENCY` env variable.
+- **BullMQ Orchestration**: The pipeline is managed by a BullMQ worker queue to ensure background execution does not block the NestJS event loop.
+- **Resume-ability**: If a document is in `CHUNKED` status, the `PipelineWorker` will skip stages 1-5 and start at `CONTEXTUALIZE`.
+- **Async Execution**: The controller calls `queue.add('ingest', { docId })` and returns a `202 Accepted` immediately.
+- **Concurrency**: Managed via BullMQ concurrency settings (`INGESTION_CONCURRENCY` env variable).
 - **Isolation**: Stages are purely functional within their scope. `EmbedStage` should not know about `Qdrant` indexing.

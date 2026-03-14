@@ -22,13 +22,17 @@ The goal is to build a production-grade RAG (Retrieval-Augmented Generation) sys
 
 ### 2.4 Ingestion & Parsing
 - **Docling**: Returns structured blocks rather than raw text. This allows for "Contextual Chunking" where chunks respect document boundaries (headings, sections).
-- **Saga-Based Pipeline**: An 11-stage checkpoint-based process. If a 10MB document fails at the embedding stage, the system resumes there instead of restarting the whole parse/metadata extraction.
+- **Saga-Based Pipeline (BullMQ)**: An 11-stage checkpoint-based process. If a 10MB document fails at the embedding stage, the system resumes there instead of restarting. BullMQ (with Redis) provides queueing, concurrency limits, and retry mechanics without blocking the NestJS event loop.
 - **Contextualization**: Adding document-level and section-level context to each chunk before embedding. This "grounds" short chunks that might otherwise lose meaning.
 
 ### 2.5 AI & LLM
 - **Ollama (Primary)**: Local inference for zero cost and offline development.
 - **OpenAI (Fallback)**: Ensures system reliability if local models fail or for high-quality production embeddings (`text-embedding-3-large`).
 - **Custom AI Module**: We avoid LangChain for core logic to maintain control over classification, reranking, and fallback flows.
+
+### 2.6 Frontend Tooling
+- **Zustand & Zod**: Zustand handles lightweight global state (Auth, Document polling), while Zod ensures robust form validation matching backend DTOs.
+- **shadcn/ui**: Provides accessible, modern UI components tailored for RAG interfaces (streaming skeletons, progress bars).
 
 ## 3. High-Level Architecture
 - **Ingestion**: Upload -> Docling -> LLM Metadata -> Contextual Chunking -> Embedding -> Dual Index.

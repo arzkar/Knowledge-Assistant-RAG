@@ -8,6 +8,8 @@ The system is fully containerized using Docker Compose. It requires 7 core servi
 - **postgres:16**: Primary metadata store (Users, Documents, Chunks).
     - Port: `5432:5432`.
     - Volume: `pgdata`.
+- **redis**: In-memory store for BullMQ background tasks.
+    - Port: `6379:6379`.
 - **qdrant**: Vector database.
     - Port: `6333:6333`.
     - Volume: `qdrant_data`.
