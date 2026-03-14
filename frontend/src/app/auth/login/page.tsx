@@ -78,7 +78,7 @@ export default function LoginPage() {
               {form.formState.isSubmitting ? 'Logging in...' : 'Login'}
             </Button>
             <Button variant="link" onClick={() => router.push('/auth/signup')}>
-              Don't have an account? Sign up
+              Don&apos;t have an account? Sign up
             </Button>
           </CardFooter>
         </form>

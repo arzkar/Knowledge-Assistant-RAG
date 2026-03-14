@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Send, Bot, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -50,7 +50,6 @@ export default function QueryPage() {
     setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
 
-    let assistantMessage = '';
     setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
     try {
