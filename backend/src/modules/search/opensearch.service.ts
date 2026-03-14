@@ -90,7 +90,7 @@ export class OpenSearchService implements OnModuleInit {
   }
 
   async deleteByDocumentId(documentId: string) {
-    return this.client.delete_by_query({
+    return this.client.deleteByQuery({
       index: this.indexName,
       body: {
         query: {

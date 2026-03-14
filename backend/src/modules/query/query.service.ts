@@ -151,9 +151,9 @@ export class QueryService {
     
     const results = await this.qdrantService.search(vector, filter, limit);
     return results.map((r, idx) => ({
-      chunkId: r.payload.chunkId,
-      documentId: r.payload.documentId,
-      text: r.payload.text,
+      chunkId: r.payload?.chunkId as string,
+      documentId: r.payload?.documentId as string,
+      text: r.payload?.text as string,
       rank: idx + 1,
       score: r.score,
     }));
