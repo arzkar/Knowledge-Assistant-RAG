@@ -7,10 +7,26 @@ import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Send, Bot, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import api from '@/lib/api';
+
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+
+interface Source {
+  documentId: string;
+  chunkId: string;
+  score: number;
+  text: string;
+}
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  sources?: Source[];
 }
 
 export default function QueryPage() {
@@ -38,58 +54,78 @@ export default function QueryPage() {
     setMessages((prev) => [...prev, { role: 'assistant', content: '' }]);
 
     try {
-      const eventSource = new EventSource(
-        `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'}/query/stream?q=${encodeURIComponent(userMessage)}`,
-        { withCredentials: true }
-      );
+      // 1. First fetch metadata/sources using standard POST (to get rich info)
+      const res = await api.post('/query', { query: userMessage });
+      const { answer, sources } = res.data;
 
-      eventSource.onmessage = (event) => {
-        assistantMessage += event.data;
-        setMessages((prev) => {
-          const newMessages = [...prev];
-          newMessages[newMessages.length - 1].content = assistantMessage;
-          return newMessages;
-        });
-      };
+      // 2. Then update state with sources
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[newMessages.length - 1].content = answer;
+        newMessages[newMessages.length - 1].sources = sources;
+        return newMessages;
+      });
+      setIsLoading(false);
 
-      eventSource.onerror = (error) => {
-        console.error('SSE error:', error);
-        eventSource.close();
-        setIsLoading(false);
-      };
-
-      // Since standard SSE doesn't have a "close" event from server easily, 
-      // we'd normally have a special message or just wait for timeout/close.
-      // For this prototype, we'll assume completion when connection closes or logic finishes.
+      // Note: In a real production app, we would use SSE for tokens 
+      // AND metadata. For now, I'm switching to the POST endpoint 
+      // implemented in the backend to ensure we get the citations correctly.
     } catch (error) {
-      console.error('Failed to start stream', error);
+      console.error('Failed to query', error);
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="container mx-auto py-10 h-[calc(100-80px)] flex flex-col max-w-4xl">
-      <h1 className="text-3xl font-bold mb-8 text-center">Knowledge Assistant</h1>
+    <div className="container mx-auto py-10 h-[calc(100vh-80px)] flex flex-col max-w-4xl">
+      <h1 className="text-3xl font-bold mb-8 text-center text-primary">EcoReady Assistant</h1>
       
-      <Card className="flex-1 overflow-hidden flex flex-col mb-4">
+      <Card className="flex-1 overflow-hidden flex flex-col mb-4 border-2 shadow-lg">
         <ScrollArea className="flex-1 p-6" ref={scrollRef}>
-          <div className="space-y-6">
+          <div className="space-y-8">
             {messages.map((msg, idx) => (
-              <div key={idx} className={`flex gap-4 ${msg.role === 'assistant' ? 'bg-muted/50 p-4 rounded-lg' : ''}`}>
-                <div className="mt-1">
-                  {msg.role === 'assistant' ? <Bot className="h-6 w-6 text-primary" /> : <User className="h-6 w-6 text-muted-foreground" />}
+              <div key={idx} className={`flex flex-col gap-2 ${msg.role === 'assistant' ? 'items-start' : 'items-end'}`}>
+                <div className={`flex gap-4 max-w-[90%] ${msg.role === 'assistant' ? 'bg-muted/50 p-4 rounded-2xl rounded-tl-none' : 'bg-primary text-primary-foreground p-4 rounded-2xl rounded-tr-none'}`}>
+                  <div className="mt-1 flex-shrink-0">
+                    {msg.role === 'assistant' ? <Bot className="h-6 w-6" /> : <User className="h-6 w-6" />}
+                  </div>
+                  <div className="flex-1 prose prose-sm dark:prose-invert">
+                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                  </div>
                 </div>
-                <div className="flex-1 prose prose-sm dark:prose-invert">
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                </div>
+                
+                {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
+                  <div className="w-full mt-4 pl-10">
+                    <Accordion type="single" collapsible className="w-full">
+                      <AccordionItem value="sources" className="border-none">
+                        <AccordionTrigger className="text-xs text-muted-foreground hover:no-underline py-0">
+                          View {msg.sources.length} Sources
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-4">
+                          <div className="grid gap-4">
+                            {msg.sources.map((source, sIdx) => (
+                              <div key={sIdx} className="text-xs p-3 bg-background border rounded-lg shadow-sm">
+                                <div className="flex justify-between font-bold mb-1 text-primary/80 uppercase tracking-widest text-[10px]">
+                                  <span>Source {sIdx + 1}</span>
+                                  <span>Score: {source.score.toFixed(2)}</span>
+                                </div>
+                                <p className="italic line-clamp-3 text-muted-foreground">{source.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    </Accordion>
+                  </div>
+                )}
               </div>
             ))}
             {isLoading && messages[messages.length - 1].content === '' && (
-              <div className="flex gap-4">
-                <Bot className="h-6 w-6 text-primary animate-pulse" />
-                <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex gap-4 items-center">
+                <Bot className="h-6 w-6 text-primary animate-bounce" />
+                <div className="flex items-center gap-2 text-muted-foreground text-sm font-medium">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Thinking...
+                  Analyzing documents...
                 </div>
               </div>
             )}
@@ -103,10 +139,10 @@ export default function QueryPage() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           disabled={isLoading}
-          className="flex-1"
+          className="flex-1 h-12 text-base shadow-sm"
         />
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        <Button type="submit" disabled={isLoading} className="h-12 w-12 rounded-full">
+          {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
         </Button>
       </form>
     </div>

@@ -3,7 +3,9 @@ import { OpenSearchService } from '../search/opensearch.service';
 import { QdrantService } from '../vector/qdrant.service';
 import { LlmService } from '../ai/llm.service';
 import { EmbeddingsService } from '../ai/embeddings.service';
+import { ConfigService } from '@nestjs/config';
 import { Subscriber } from 'rxjs';
+import { CohereClient } from 'cohere-ai';
 
 export enum QueryType {
   FACTUAL = 'FACTUAL',
@@ -15,13 +17,20 @@ export enum QueryType {
 @Injectable()
 export class QueryService {
   private readonly logger = new Logger(QueryService.name);
+  private readonly cohere: CohereClient | null = null;
 
   constructor(
     private readonly opensearchService: OpenSearchService,
     private readonly qdrantService: QdrantService,
     private readonly llmService: LlmService,
     private readonly embeddingsService: EmbeddingsService,
-  ) {}
+    private readonly configService: ConfigService,
+  ) {
+    const apiKey = this.configService.get<string>('COHERE_API_KEY');
+    if (apiKey) {
+      this.cohere = new CohereClient({ token: apiKey });
+    }
+  }
 
   async handleQuery(query: string, documentIds?: string[]) {
     this.logger.log(`Handling query: ${query}`);
@@ -30,10 +39,13 @@ export class QueryService {
     const queryType = await this.classifyQuery(query);
     const weights = this.getWeights(queryType);
 
-    // 2. Retrieve Context
-    const context = await this.retrieveContext(query, weights, documentIds);
+    // 2. Retrieve Context (Hybrid Search)
+    let context = await this.retrieveContext(query, weights, documentIds);
 
-    // 3. Generate Answer
+    // 3. Second-Stage Reranking
+    context = await this.rerank(query, context);
+
+    // 4. Generate Answer
     const prompt = this.buildPrompt(query, context);
     const answer = await this.llmService.generate(prompt);
 
@@ -42,7 +54,8 @@ export class QueryService {
       sources: context.map(c => ({
         documentId: c.documentId,
         chunkId: c.chunkId,
-        score: c.score,
+        score: c.rerankScore || c.rrfScore,
+        text: c.text,
       })),
       metadata: {
         queryType,
@@ -55,7 +68,9 @@ export class QueryService {
     try {
       const queryType = await this.classifyQuery(query);
       const weights = this.getWeights(queryType);
-      const context = await this.retrieveContext(query, weights, documentIds);
+      let context = await this.retrieveContext(query, weights, documentIds);
+      
+      context = await this.rerank(query, context);
       
       const prompt = this.buildPrompt(query, context);
       const stream = this.llmService.stream(prompt);
@@ -66,6 +81,31 @@ export class QueryService {
       subscriber.complete();
     } catch (error) {
       subscriber.error(error);
+    }
+  }
+
+  private async rerank(query: string, documents: any[]): Promise<any[]> {
+    if (!this.cohere || documents.length === 0) {
+      this.logger.warn('Cohere API Key not set or no docs, skipping rerank');
+      return documents;
+    }
+
+    try {
+      this.logger.log(`Reranking ${documents.length} documents...`);
+      const response = await this.cohere.rerank({
+        query,
+        documents: documents.map(d => d.text),
+        model: 'rerank-v3.5',
+        topN: 10,
+      });
+
+      return response.results.map((result) => ({
+        ...documents[result.index],
+        rerankScore: result.relevanceScore,
+      })).sort((a, b) => (b.rerankScore || 0) - (a.rerankScore || 0));
+    } catch (error) {
+      this.logger.error(`Rerank failed: ${error}`);
+      return documents;
     }
   }
 
