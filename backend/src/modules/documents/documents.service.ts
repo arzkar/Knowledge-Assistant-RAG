@@ -5,12 +5,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { Document, DocumentStatus } from '../database/entities/document.entity';
 import { User } from '../database/entities/user.entity';
+import { IngestionService } from '../ingestion/ingestion.service';
 
 @Injectable()
 export class DocumentsService {
   constructor(
     @InjectRepository(Document)
     private readonly documentRepository: Repository<Document>,
+    private readonly ingestionService: IngestionService,
   ) {}
 
   async create(file: Express.Multer.File, user: User): Promise<Document> {
@@ -33,7 +35,12 @@ export class DocumentsService {
       metadata: {},
     });
 
-    return this.documentRepository.save(document);
+    const savedDocument = await this.documentRepository.save(document);
+    
+    // Trigger ingestion saga
+    await this.ingestionService.startIngestion(savedDocument.id);
+
+    return savedDocument;
   }
 
   async findAll(user: User): Promise<Document[]> {
