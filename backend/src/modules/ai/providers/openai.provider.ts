@@ -20,10 +20,14 @@ export class OpenAIProvider implements ILLMProvider {
       'OPENAI_EMBED_MODEL',
       'text-embedding-3-large',
     );
-    this.dimension = this.configService.get<number>('VECTOR_SIZE', 3072);
+    this.dimension = Number(this.configService.get<number>('VECTOR_SIZE', 3072));
   }
 
-  async generate(prompt: string, systemPrompt?: string): Promise<string> {
+  async generate(
+    prompt: string,
+    systemPrompt?: string,
+    options?: { json?: boolean },
+  ): Promise<string> {
     try {
       const messages: any[] = [];
       if (systemPrompt) {
@@ -34,6 +38,7 @@ export class OpenAIProvider implements ILLMProvider {
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages: messages as any,
+        response_format: options?.json ? { type: 'json_object' } : undefined,
       });
 
       return response.choices[0].message.content || '';
@@ -45,7 +50,11 @@ export class OpenAIProvider implements ILLMProvider {
     }
   }
 
-  async *stream(prompt: string, systemPrompt?: string): AsyncGenerator<string> {
+  async *stream(
+    prompt: string,
+    systemPrompt?: string,
+    options?: { json?: boolean },
+  ): AsyncGenerator<string> {
     try {
       const messages: any[] = [];
       if (systemPrompt) {
@@ -57,6 +66,7 @@ export class OpenAIProvider implements ILLMProvider {
         model: this.model,
         messages: messages as any,
         stream: true,
+        response_format: options?.json ? { type: 'json_object' } : undefined,
       });
 
       for await (const part of response) {

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { OllamaProvider } from './providers/ollama.provider';
 import { OpenAIProvider } from './providers/openai.provider';
-import { ILLMProvider } from './providers/provider.interface';
+import { ILLMProvider, LLMOptions } from './providers/provider.interface';
 
 @Injectable()
 export class LlmService {
@@ -25,24 +25,40 @@ export class LlmService {
     }
   }
 
-  async generate(prompt: string, systemPrompt?: string): Promise<string> {
+  async generate(
+    prompt: string,
+    systemPrompt?: string,
+    options?: LLMOptions,
+  ): Promise<string> {
     try {
       this.logger.log(`Attempting to generate using primary provider...`);
-      return await this.primaryProvider.generate(prompt, systemPrompt);
+      return await this.primaryProvider.generate(prompt, systemPrompt, options);
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.warn(
         `Primary provider failed, falling back to secondary: ${errorMessage}`,
       );
-      return await this.secondaryProvider.generate(prompt, systemPrompt);
+      return await this.secondaryProvider.generate(
+        prompt,
+        systemPrompt,
+        options,
+      );
     }
   }
 
-  async *stream(prompt: string, systemPrompt?: string): AsyncGenerator<string> {
+  async *stream(
+    prompt: string,
+    systemPrompt?: string,
+    options?: LLMOptions,
+  ): AsyncGenerator<string> {
     try {
       this.logger.log(`Attempting to stream using primary provider...`);
-      const stream = this.primaryProvider.stream(prompt, systemPrompt);
+      const stream = this.primaryProvider.stream(
+        prompt,
+        systemPrompt,
+        options,
+      );
       for await (const chunk of stream) {
         yield chunk;
       }
@@ -52,7 +68,11 @@ export class LlmService {
       this.logger.warn(
         `Primary stream failed, falling back to secondary: ${errorMessage}`,
       );
-      const stream = this.secondaryProvider.stream(prompt, systemPrompt);
+      const stream = this.secondaryProvider.stream(
+        prompt,
+        systemPrompt,
+        options,
+      );
       for await (const chunk of stream) {
         yield chunk;
       }

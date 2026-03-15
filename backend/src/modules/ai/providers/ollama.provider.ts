@@ -23,7 +23,11 @@ export class OllamaProvider implements ILLMProvider {
     );
   }
 
-  async generate(prompt: string, systemPrompt?: string): Promise<string> {
+  async generate(
+    prompt: string,
+    systemPrompt?: string,
+    options?: { json?: boolean },
+  ): Promise<string> {
     try {
       const messages = [];
       if (systemPrompt) {
@@ -34,11 +38,20 @@ export class OllamaProvider implements ILLMProvider {
       const response = await this.ollama.chat({
         model: this.model,
         messages,
+        format: options?.json ? 'json' : undefined,
         stream: false,
+        options: {
+          num_ctx: 4096,
+        },
       });
 
       return (response as any).message.content as string;
-    } catch (error) {
+    } catch (error: any) {
+      if (error.status === 404 || error.message?.includes('not found')) {
+        this.logger.error(
+          `Model '${this.model}' not found in Ollama. The 'ollama-pull' service should be pulling it, or you can run 'docker exec -it ollama ollama pull ${this.model}' manually.`,
+        );
+      }
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       this.logger.error(`Ollama generate error: ${errorMessage}`);
@@ -46,7 +59,11 @@ export class OllamaProvider implements ILLMProvider {
     }
   }
 
-  async *stream(prompt: string, systemPrompt?: string): AsyncGenerator<string> {
+  async *stream(
+    prompt: string,
+    systemPrompt?: string,
+    options?: { json?: boolean },
+  ): AsyncGenerator<string> {
     try {
       const messages = [];
       if (systemPrompt) {
@@ -57,7 +74,11 @@ export class OllamaProvider implements ILLMProvider {
       const response = await this.ollama.chat({
         model: this.model,
         messages,
+        format: options?.json ? 'json' : undefined,
         stream: true,
+        options: {
+          num_ctx: 4096,
+        },
       });
 
       for await (const part of response as any) {
