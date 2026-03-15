@@ -5,9 +5,17 @@ import { DocumentsController } from './documents.controller';
 import { Document } from '../database/entities/document.entity';
 import { IngestionModule } from '../ingestion/ingestion.module';
 import { AuthModule } from '../auth/auth.module';
+import { VectorModule } from '../vector/vector.module';
+import { SearchModule } from '../search/search.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Document]), IngestionModule, AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([Document]), 
+    IngestionModule, 
+    AuthModule,
+    VectorModule,
+    SearchModule
+  ],
   controllers: [DocumentsController],
   providers: [DocumentsService],
   exports: [DocumentsService],

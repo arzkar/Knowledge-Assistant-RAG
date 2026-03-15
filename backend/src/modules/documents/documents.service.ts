@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as fs from 'fs';
@@ -6,13 +6,19 @@ import * as path from 'path';
 import { Document, DocumentStatus } from '../database/entities/document.entity';
 import { User } from '../database/entities/user.entity';
 import { IngestionService } from '../ingestion/ingestion.service';
+import { QdrantService } from '../vector/qdrant.service';
+import { OpenSearchService } from '../search/opensearch.service';
 
 @Injectable()
 export class DocumentsService {
+  private readonly logger = new Logger(DocumentsService.name);
+
   constructor(
     @InjectRepository(Document)
     private readonly documentRepository: Repository<Document>,
     private readonly ingestionService: IngestionService,
+    private readonly qdrantService: QdrantService,
+    private readonly opensearchService: OpenSearchService,
   ) {}
 
   async create(file: Express.Multer.File, user: User): Promise<Document> {
@@ -69,10 +75,32 @@ export class DocumentsService {
   async remove(id: string, user: User): Promise<void> {
     const document = await this.findOne(id, user);
 
-    if (fs.existsSync(document.filePath)) {
-      fs.unlinkSync(document.filePath);
+    this.logger.log(`Removing document ${id} from all stores...`);
+
+    // 1. Delete from Qdrant
+    try {
+      await this.qdrantService.deleteByDocumentId(id);
+    } catch (e) {
+      this.logger.error(`Failed to delete from Qdrant: ${e.message}`);
     }
 
+    // 2. Delete from OpenSearch
+    try {
+      await this.opensearchService.deleteByDocumentId(id);
+    } catch (e) {
+      this.logger.error(`Failed to delete from OpenSearch: ${e.message}`);
+    }
+
+    // 3. Delete from File System
+    if (fs.existsSync(document.filePath)) {
+      try {
+        fs.unlinkSync(document.filePath);
+      } catch (e) {
+        this.logger.error(`Failed to delete file: ${e.message}`);
+      }
+    }
+
+    // 4. Delete from Database (cascades to chunks)
     await this.documentRepository.remove(document);
   }
 
