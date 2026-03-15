@@ -36,6 +36,7 @@ services:
       - discovery.type=single-node
       - plugins.security.disabled=true
       - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=RagAssistant#2026!"
     mem_limit: 1g
 
   docling:
@@ -44,25 +45,43 @@ services:
     ports:
       - '5001:5001'
 
-  ollama:
-    image: ollama/ollama
-    container_name: ollama
-    ports:
-      - '11434:11434'
-    volumes:
-      - ollama_data:/root/.ollama
+#   ollama:
+#     image: ollama/ollama
+#     container_name: ollama
+#     ports:
+#       - '11434:11434'
+#     volumes:
+#       - ollama_data:/root/.ollama
+#     healthcheck:
+#       test: ["CMD", "ollama", "list"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+
+#   ollama-pull:
+#     image: ollama/ollama
+#     container_name: ollama-pull
+#     environment:
+#       - OLLAMA_HOST=ollama:11434
+#     entrypoint: /bin/sh
+#     command: -c "sleep 5; ollama pull llama3; ollama pull nomic-embed-text"
+#     depends_on:
+#       ollama:
+#         condition: service_healthy
 
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
+      target: development
     container_name: backend
     volumes:
       - ./backend:/app
       - /app/node_modules
-    command: npm run start:dev
     env_file:
       - ./backend/.env
+    environment:
+      NODE_ENV: development
     ports:
       - '3001:3001'
     depends_on:
@@ -71,22 +90,23 @@ services:
       - qdrant
       - opensearch
       - docling
-      - ollama
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      target: development
     container_name: frontend
     volumes:
       - ./frontend:/app
       - /app/node_modules
       - /app/.next
-    command: npm run dev
+    environment:
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NODE_ENV: development
     ports:
       - '3000:3000'
-    environment:
-      NEXT_PUBLIC_API_URL: http://localhost:3001
     depends_on:
       - backend
 
