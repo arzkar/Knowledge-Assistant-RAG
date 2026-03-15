@@ -11,7 +11,12 @@ async function bootstrap() {
     credentials: true,
   });
 
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.useGlobalPipes(new ValidationPipe({ 
+    whitelist: true, 
+    transform: true,
+    // Better Auth handles its own validation, and Nest's body parser/validator
+    // can sometimes interfere with its raw request handling.
+  }));
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   await app.listen(process.env.PORT ?? 3001);
