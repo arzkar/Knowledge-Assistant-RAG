@@ -120,14 +120,20 @@ export class IngestionProcessor extends WorkerHost {
     // Stage 4: CHUNK
     if (this.shouldRun(document.status, DocumentStatus.METADATA_DONE)) {
       const blocks = (document.metadata as any).blocks;
-      const chunkResults = await this.chunkingService.createChunks(blocks || []);
-      
       const metadata = document.metadata as any;
+      const documentSummary = metadata.summary || '';
+      
+      const chunkResults = await this.chunkingService.createChunks(
+        blocks || [],
+        documentSummary,
+      );
+      
       const docTitle = metadata.title || document.originalName;
 
       const chunkEntities = chunkResults.map(res => {
         const section = res.metadata?.section || 'General';
-        const contextText = `Document: ${docTitle} | Section: ${section} | Content: ${res.text}`;
+        const prefix = res.metadata?.contextualPrefix ? `${res.metadata.contextualPrefix} ` : '';
+        const contextText = `Document: ${docTitle} | Section: ${section} | Context: ${prefix}Content: ${res.text}`;
         
         return this.chunkRepository.create({
           documentId: document.id,

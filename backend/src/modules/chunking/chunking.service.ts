@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DocBlock } from '../parser/docling.service';
+import { LlmService } from '../ai/llm.service';
 
 export interface ChunkResult {
   text: string;
@@ -7,6 +8,7 @@ export interface ChunkResult {
   metadata: {
     page: number;
     section?: string;
+    contextualPrefix?: string;
   };
 }
 
@@ -16,42 +18,40 @@ export class ChunkingService {
   private readonly targetChunkSize = 800;
   private readonly minChunkSize = 400;
 
-  async createChunks(blocks: DocBlock[]): Promise<ChunkResult[]> {
+  constructor(private readonly llmService: LlmService) {}
+
+  async createChunks(
+    blocks: DocBlock[],
+    documentSummary?: string,
+  ): Promise<ChunkResult[]> {
     this.logger.log(`Chunking ${blocks.length} blocks...`);
-    
-    const chunks: ChunkResult[] = [];
+
+    const rawChunks: { text: string; page: number; section: string }[] = [];
     let currentChunkText = '';
     let currentChunkPage = blocks[0]?.page || 1;
     let currentChunkSection = blocks[0]?.section || '';
-    let chunkIndex = 0;
 
     for (const block of blocks) {
-      // If adding this block exceeds target size and we have enough content, flush the current chunk
-      if (currentChunkText.length + block.text.length > this.targetChunkSize && currentChunkText.length >= this.minChunkSize) {
-        chunks.push({
+      if (
+        currentChunkText.length + block.text.length > this.targetChunkSize &&
+        currentChunkText.length >= this.minChunkSize
+      ) {
+        rawChunks.push({
           text: currentChunkText.trim(),
-          chunkIndex: chunkIndex++,
-          metadata: {
-            page: currentChunkPage,
-            section: currentChunkSection,
-          },
+          page: currentChunkPage,
+          section: currentChunkSection,
         });
         currentChunkText = '';
       }
 
-      // If it's a heading, we might want to start a new chunk or at least update context
       if (block.heading && currentChunkText.length > 0) {
-        // Flush before starting a new section if current is substantial
         if (currentChunkText.length >= this.minChunkSize) {
-            chunks.push({
-                text: currentChunkText.trim(),
-                chunkIndex: chunkIndex++,
-                metadata: {
-                  page: currentChunkPage,
-                  section: currentChunkSection,
-                },
-              });
-              currentChunkText = '';
+          rawChunks.push({
+            text: currentChunkText.trim(),
+            page: currentChunkPage,
+            section: currentChunkSection,
+          });
+          currentChunkText = '';
         }
       }
 
@@ -63,19 +63,68 @@ export class ChunkingService {
       currentChunkText += (currentChunkText ? '\n' : '') + block.text;
     }
 
-    // Flush the last chunk
     if (currentChunkText.trim().length > 0) {
-      chunks.push({
+      rawChunks.push({
         text: currentChunkText.trim(),
-        chunkIndex: chunkIndex++,
+        page: currentChunkPage,
+        section: currentChunkSection,
+      });
+    }
+
+    const chunks: ChunkResult[] = [];
+    this.logger.log(`Enriching ${rawChunks.length} chunks with context...`);
+
+    for (let i = 0; i < rawChunks.length; i++) {
+      const raw = rawChunks[i];
+      let contextualPrefix = '';
+
+      if (documentSummary) {
+        contextualPrefix = await this.generateSituationalContext(
+          raw.text,
+          documentSummary,
+        );
+      }
+
+      chunks.push({
+        text: raw.text,
+        chunkIndex: i,
         metadata: {
-          page: currentChunkPage,
-          section: currentChunkSection,
+          page: raw.page,
+          section: raw.section,
+          contextualPrefix,
         },
       });
     }
 
-    this.logger.log(`Created ${chunks.length} chunks`);
+    this.logger.log(`Created ${chunks.length} contextualized chunks`);
     return chunks;
+  }
+
+  private async generateSituationalContext(
+    chunkText: string,
+    documentSummary: string,
+  ): Promise<string> {
+    const prompt = `
+<document_summary>
+${documentSummary}
+</document_summary>
+
+<chunk_content>
+${chunkText}
+</chunk_content>
+
+Please provide a short (one-sentence) contextual description of where this chunk fits within the overall document.
+Do not repeat the summary or the chunk content. Just provide the situational context.
+`;
+    const systemPrompt =
+      'You are a RAG optimization assistant. Generate a concise, single-sentence situational context for the provided chunk.';
+
+    try {
+      const result = await this.llmService.generate(prompt, systemPrompt);
+      return result.trim();
+    } catch (error) {
+      this.logger.warn(`Failed to generate contextual prefix for chunk: ${error.message}`);
+      return '';
+    }
   }
 }

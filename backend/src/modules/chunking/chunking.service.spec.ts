@@ -1,13 +1,20 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ChunkingService } from './chunking.service';
 import { DocBlock } from '../parser/docling.service';
+import { LlmService } from '../ai/llm.service';
 
 describe('ChunkingService', () => {
   let service: ChunkingService;
+  const mockLlmService = {
+    generate: jest.fn().mockResolvedValue('This is a test situational context.'),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [ChunkingService],
+      providers: [
+        ChunkingService,
+        { provide: LlmService, useValue: mockLlmService },
+      ],
     }).compile();
 
     service = module.get<ChunkingService>(ChunkingService);
