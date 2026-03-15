@@ -14,10 +14,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2, Upload, Trash2, RotateCcw, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
 
 export default function DocumentsPage() {
-  const { documents, isLoading, fetchDocuments, uploadDocument } = useDocumentStore();
+  const { documents, isLoading, fetchDocuments, uploadDocument, deleteDocument, retryDocument } = useDocumentStore();
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
@@ -99,21 +100,53 @@ export default function DocumentsPage() {
                 <TableHead>Name</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created At</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {documents.length === 0 && !isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={3} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
                     No documents found. Upload one to get started.
                   </TableCell>
                 </TableRow>
               ) : (
                 documents.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell className="font-medium">{doc.originalName}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link 
+                        href={`/documents/${doc.id}`}
+                        className="flex items-center gap-2 hover:text-primary transition-colors hover:underline underline-offset-4"
+                      >
+                        {doc.originalName}
+                        <ExternalLink className="h-3 w-3 opacity-50" />
+                      </Link>
+                    </TableCell>
                     <TableCell>{getStatusBadge(doc.status)}</TableCell>
                     <TableCell>{new Date(doc.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {doc.status === 'FAILED' && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => retryDocument(doc.id)}
+                            title="Retry Ingestion"
+                          >
+                            <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => deleteDocument(doc.id)}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="Delete Document"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
