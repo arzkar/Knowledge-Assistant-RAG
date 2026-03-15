@@ -59,6 +59,27 @@ export class OpenSearchService implements OnModuleInit {
     });
   }
 
+  async bulkIndex(chunks: any[]) {
+    if (chunks.length === 0) return;
+
+    const body = chunks.flatMap((chunk) => [
+      { index: { _index: this.indexName } },
+      chunk,
+    ]);
+
+    const { body: response } = await this.client.bulk({
+      body,
+      refresh: true,
+    });
+
+    if (response.errors) {
+      this.logger.error(`Bulk index encountered errors`);
+      // Optional: log specific errors
+    }
+
+    return response;
+  }
+
   async search(query: string, filter?: any, limit = 5) {
     const body: any = {
       size: limit,

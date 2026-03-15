@@ -26,10 +26,11 @@ export class QdrantService implements OnModuleInit {
       );
 
       if (!exists) {
-        this.logger.log(`Creating Qdrant collection: ${this.collectionName}`);
+        const vectorSize = this.configService.get<number>('VECTOR_SIZE', 768);
+        this.logger.log(`Creating Qdrant collection: ${this.collectionName} with vector size: ${vectorSize}`);
         await this.client.createCollection(this.collectionName, {
           vectors: {
-            size: this.configService.get<number>('VECTOR_SIZE', 3072),
+            size: vectorSize,
             distance: 'Cosine',
           },
         });

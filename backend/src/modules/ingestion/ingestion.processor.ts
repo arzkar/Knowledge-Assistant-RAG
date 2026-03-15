@@ -52,9 +52,15 @@ export class IngestionProcessor extends WorkerHost {
       const errorMessage = error instanceof Error ? error.message : String(error);
       this.logger.error(`Pipeline failed for document ${documentId}: ${errorMessage}`);
       
+      const metadata = {
+        ...((document.metadata as object) || {}),
+        resumeStatus: document.status,
+      } as any;
+
       await this.documentRepository.update(documentId, {
         status: DocumentStatus.FAILED,
         error: errorMessage,
+        metadata,
       });
       
       throw error;
@@ -75,9 +81,19 @@ export class IngestionProcessor extends WorkerHost {
 
     // Stage 2: PARSE
     if (this.shouldRun(document.status, DocumentStatus.FETCHED)) {
-      const blocks = await this.doclingService.parse(document.filePath);
+      const extracted = await this.doclingService.parse(document.filePath);
+      
+      if (!extracted || extracted.length === 0) {
+        throw new Error('No content could be extracted from the document');
+      }
+
+      // Update document metadata with parsed blocks
+      document.metadata = {
+        ...((document.metadata as object) || {}),
+        blocks: extracted,
+      };
       await this.documentRepository.update(document.id, {
-        metadata: { ...document.metadata, blocks }
+        metadata: document.metadata
       });
       await this.updateStatus(document.id, DocumentStatus.PARSED);
       document.status = DocumentStatus.PARSED;
@@ -86,15 +102,16 @@ export class IngestionProcessor extends WorkerHost {
     // Stage 3: METADATA
     if (this.shouldRun(document.status, DocumentStatus.PARSED)) {
       const blocks = (document.metadata as any).blocks;
-      const sampleText = blocks.slice(0, 10).map((b: any) => b.text).join('\n');
+      const sampleText = (blocks || []).slice(0, 10).map((b: any) => b.text).join('\n');
       const prompt = `Extract metadata (title, summary, keywords) from this text: \n\n ${sampleText}`;
       const systemPrompt = `Return JSON only: { "title": "...", "summary": "...", "keywords": ["..."] }`;
       
-      const metadataStr = await this.llmService.generate(prompt, systemPrompt);
-      const extractedMetadata = JSON.parse(metadataStr);
+      const metadataStr = await this.llmService.generate(prompt, systemPrompt, { json: true });
+      const extractedMetadata = this.extractJson(metadataStr);
       
+      document.metadata = { ...document.metadata, ...extractedMetadata };
       await this.documentRepository.update(document.id, {
-        metadata: { ...document.metadata, ...extractedMetadata }
+        metadata: document.metadata
       });
       await this.updateStatus(document.id, DocumentStatus.METADATA_DONE);
       document.status = DocumentStatus.METADATA_DONE;
@@ -103,15 +120,23 @@ export class IngestionProcessor extends WorkerHost {
     // Stage 4: CHUNK
     if (this.shouldRun(document.status, DocumentStatus.METADATA_DONE)) {
       const blocks = (document.metadata as any).blocks;
-      const chunkResults = await this.chunkingService.createChunks(blocks);
+      const chunkResults = await this.chunkingService.createChunks(blocks || []);
       
-      const chunkEntities = chunkResults.map(res => this.chunkRepository.create({
-        documentId: document.id,
-        chunkIndex: res.chunkIndex,
-        text: res.text,
-        contextText: res.text, // Initial context is just the text
-        metadata: res.metadata,
-      }));
+      const metadata = document.metadata as any;
+      const docTitle = metadata.title || document.originalName;
+
+      const chunkEntities = chunkResults.map(res => {
+        const section = res.metadata?.section || 'General';
+        const contextText = `Document: ${docTitle} | Section: ${section} | Content: ${res.text}`;
+        
+        return this.chunkRepository.create({
+          documentId: document.id,
+          chunkIndex: res.chunkIndex,
+          text: res.text,
+          contextText: contextText,
+          metadata: res.metadata,
+        });
+      });
       
       await this.chunkRepository.save(chunkEntities);
       await this.updateStatus(document.id, DocumentStatus.CHUNKED);
@@ -121,17 +146,7 @@ export class IngestionProcessor extends WorkerHost {
 
     // Stage 5: CONTEXTUALIZE
     if (this.shouldRun(document.status, DocumentStatus.CHUNKED)) {
-      const metadata = document.metadata as any;
-      const docTitle = metadata.title || document.originalName;
-      
-      const chunks = await this.chunkRepository.find({ where: { documentId: document.id } });
-      
-      for (const chunk of chunks) {
-        const section = chunk.metadata?.section || 'General';
-        const contextText = `Document: ${docTitle} | Section: ${section} | Content: ${chunk.text}`;
-        await this.chunkRepository.update(chunk.id, { contextText });
-      }
-      
+      // Chunks already have contextText from Stage 4
       await this.updateStatus(document.id, DocumentStatus.CONTEXTUALIZED);
       document.status = DocumentStatus.CONTEXTUALIZED;
     }
@@ -142,8 +157,9 @@ export class IngestionProcessor extends WorkerHost {
       const texts = chunks.map(c => c.contextText);
       const embeddings = await this.embeddingsService.embedBatch(texts);
       
+      document.metadata = { ...document.metadata, embeddings };
       await this.documentRepository.update(document.id, {
-        metadata: { ...document.metadata, embeddings }
+        metadata: document.metadata
       });
       await this.updateStatus(document.id, DocumentStatus.EMBEDDED);
       document.status = DocumentStatus.EMBEDDED;
@@ -152,14 +168,14 @@ export class IngestionProcessor extends WorkerHost {
     // Stage 7: BM25_INDEX
     if (this.shouldRun(document.status, DocumentStatus.EMBEDDED)) {
       const chunks = await this.chunkRepository.find({ where: { documentId: document.id } });
-      for (const chunk of chunks) {
-        await this.opensearchService.indexChunk({
-          text: chunk.text,
-          documentId: document.id,
-          chunkId: chunk.id,
-          metadata: chunk.metadata,
-        });
-      }
+      const bulkChunks = chunks.map(chunk => ({
+        text: chunk.text,
+        documentId: document.id,
+        chunkId: chunk.id,
+        metadata: chunk.metadata,
+      }));
+      
+      await this.opensearchService.bulkIndex(bulkChunks);
       await this.updateStatus(document.id, DocumentStatus.BM25_INDEXED);
       document.status = DocumentStatus.BM25_INDEXED;
     }
@@ -186,11 +202,37 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 9: FINALIZE
-    await this.updateStatus(document.id, DocumentStatus.READY);
-    this.logger.log(`Ingestion complete for document: ${document.id}`);
+    if (this.shouldRun(document.status, DocumentStatus.VECTOR_INDEXED)) {
+      await this.updateStatus(document.id, DocumentStatus.READY);
+      document.status = DocumentStatus.READY;
+      this.logger.log(`Ingestion complete for document: ${document.id}`);
+    }
+  }
+
+  private extractJson(text: string): any {
+    try {
+      // First try direct parse
+      return JSON.parse(text);
+    } catch (e) {
+      // Try to find JSON block
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          return JSON.parse(jsonMatch[0]);
+        } catch (innerE) {
+          this.logger.error(`Failed to parse extracted JSON block: ${jsonMatch[0]}`);
+          throw innerE;
+        }
+      }
+      this.logger.error(`No JSON block found in text: ${text}`);
+      throw new Error('Failed to extract JSON from LLM response');
+    }
   }
 
   private shouldRun(currentStatus: DocumentStatus, stageStatus: DocumentStatus): boolean {
+    if (currentStatus === DocumentStatus.FAILED) return false;
+    if (currentStatus === DocumentStatus.READY) return false;
+    
     const statuses = Object.values(DocumentStatus);
     const currentIndex = statuses.indexOf(currentStatus);
     const stageIndex = statuses.indexOf(stageStatus);

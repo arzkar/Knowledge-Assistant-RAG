@@ -32,7 +32,7 @@ export class Document {
   id: string;
 
   @Index()
-  @Column('uuid')
+  @Column()
   userId: string;
 
   @ManyToOne(() => User, (user) => user.documents, { onDelete: 'CASCADE' })

@@ -26,12 +26,12 @@ export class DoclingService {
   async parse(filePath: string): Promise<DocBlock[]> {
     try {
       const formData = new FormData();
-      formData.append('file', fs.createReadStream(filePath));
+      formData.append('files', fs.createReadStream(filePath));
 
       this.logger.log(`Sending file to Docling: ${filePath}`);
 
       const response = await axios.post(
-        `${this.baseUrl}/v1alpha/convert/file`,
+        `${this.baseUrl}/v1/convert/file`,
         formData,
         {
           headers: {
@@ -42,6 +42,7 @@ export class DoclingService {
         },
       );
 
+      this.logger.debug(`Docling response data: ${JSON.stringify(response.data).substring(0, 1000)}...`);
       return this.mapResponseToBlocks(response.data);
     } catch (error: any) {
       const errorMessage =
@@ -57,32 +58,73 @@ export class DoclingService {
   }
 
   private mapResponseToBlocks(data: any): DocBlock[] {
-    // Assuming data.document.texts contains the items we need
-    // This mapping depends on the exact version of Docling Serve
-    // We target the broad structure described in docs
-    const blocks: DocBlock[] = [];
-    const texts = (data.document?.texts as any[]) || [];
-
-    let currentSection = '';
-
-    for (const item of texts) {
-      const isHeading =
-        item.label === 'section_header' ||
-        item.label === 'heading' ||
-        item.label === 'title';
-
-      if (isHeading) {
-        currentSection = item.text as string;
-      }
-
-      blocks.push({
-        text: item.text as string,
-        page: item.prov && item.prov[0] ? (item.prov[0].page_no as number) : 1,
-        section: currentSection,
-        heading: isHeading,
-      });
+    this.logger.debug(`Docling response keys: ${Object.keys(data)}`);
+    if (data.document) {
+      this.logger.debug(`Docling document keys: ${Object.keys(data.document)}`);
     }
 
-    return blocks;
+    const blocks: DocBlock[] = [];
+    
+    // Try v1 structured JSON first
+    const texts = data.document?.json_content?.texts || data.json_content?.texts;
+    
+    if (Array.isArray(texts) && texts.length > 0) {
+      this.logger.log(`Mapping ${texts.length} structured blocks from json_content`);
+      let currentSection = '';
+      for (const item of texts) {
+        const isHeading =
+          item.label === 'section_header' ||
+          item.label === 'heading' ||
+          item.label === 'title';
+
+        if (isHeading) {
+          currentSection = item.text as string;
+        }
+
+        blocks.push({
+          text: this.cleanText(item.text as string),
+          page: item.prov && item.prov[0] ? (item.prov[0].page_no as number) : 1,
+          section: currentSection,
+          heading: isHeading,
+        });
+      }
+    } else if (data.document?.md_content || data.md_content) {
+      // Fallback to markdown content if structured JSON is missing
+      const md = data.document?.md_content || data.md_content;
+      this.logger.warn('json_content missing or empty, falling back to md_content');
+      
+      // Simple split by lines/paragraphs as a last resort
+      const lines = md.split('\n').filter((l: string) => l.trim().length > 0);
+      for (const [index, line] of lines.entries()) {
+        const isHeading = line.startsWith('#');
+        blocks.push({
+          text: this.cleanText(line.replace(/^#+\s+/, '')),
+          page: 1, // Markdown doesn't have page numbers usually
+          section: isHeading ? line : 'General',
+          heading: isHeading,
+        });
+      }
+    }
+
+    if (blocks.length === 0) {
+      this.logger.error('No blocks could be extracted from Docling response');
+    }
+
+    return blocks.filter(b => b.text.trim().length > 0);
+  }
+
+  private cleanText(text: string): string {
+    if (!text) return '';
+    
+    // Remove base64 images in markdown format: ![...](data:image/...;base64,...)
+    const markdownImageRegex = /!\[.*?\]\(data:image\/.*?;base64,.*?\)/g;
+    
+    // Remove raw data URIs that might be floating around
+    const dataUriRegex = /data:image\/[a-zA-Z]*;base64,[^\s"')]*/g;
+
+    return text
+      .replace(markdownImageRegex, '[Image Removed]')
+      .replace(dataUriRegex, '[Image Removed]')
+      .trim();
   }
 }

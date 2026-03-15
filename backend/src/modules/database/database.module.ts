@@ -17,7 +17,7 @@ import { Chunk } from './entities/chunk.entity';
         password: configService.get<string>('DATABASE_PASSWORD', 'postgres'),
         database: configService.get<string>('DATABASE_NAME', 'rag_db'),
         entities: [User, Session, Account, Verification, Document, Chunk],
-        synchronize: false,
+        synchronize: true,
         logging: true,
       }),
       inject: [ConfigService],
