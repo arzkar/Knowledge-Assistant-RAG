@@ -55,4 +55,12 @@ export class DocumentsController {
   ) {
     return this.documentsService.remove(id, user);
   }
+
+  @Post(':id/retry')
+  async retry(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.documentsService.retryIngestion(id, user);
+  }
 }

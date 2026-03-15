@@ -75,4 +75,20 @@ export class DocumentsService {
 
     await this.documentRepository.remove(document);
   }
+
+  async retryIngestion(id: string, user: User): Promise<Document> {
+    const document = await this.findOne(id, user);
+    
+    // Restore status from metadata to resume, or default to UPLOADED
+    const resumeStatus = (document.metadata as any)?.resumeStatus || DocumentStatus.UPLOADED;
+    
+    await this.documentRepository.update(id, {
+      status: resumeStatus,
+      error: null,
+    });
+
+    await this.ingestionService.startIngestion(id);
+    
+    return this.findOne(id, user);
+  }
 }
