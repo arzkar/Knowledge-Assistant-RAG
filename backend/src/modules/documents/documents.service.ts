@@ -119,4 +119,27 @@ export class DocumentsService {
     
     return this.findOne(id, user);
   }
+
+  async cancelIngestion(id: string, user: User): Promise<Document> {
+    const document = await this.findOne(id, user);
+    
+    if (document.status === DocumentStatus.READY || document.status === DocumentStatus.FAILED) {
+      return document;
+    }
+
+    const metadata = {
+      ...((document.metadata as object) || {}),
+      resumeStatus: document.status,
+    } as any;
+
+    await this.documentRepository.update(id, {
+      status: DocumentStatus.FAILED,
+      error: 'Ingestion cancelled by user',
+      metadata,
+    });
+
+    this.logger.log(`Ingestion cancelled for document ${id}. Saved resume status: ${document.status}`);
+    
+    return this.findOne(id, user);
+  }
 }

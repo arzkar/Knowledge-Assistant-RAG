@@ -33,6 +33,7 @@ interface DocumentState {
   uploadDocument: (file: File) => Promise<void>;
   deleteDocument: (id: string) => Promise<void>;
   retryDocument: (id: string) => Promise<void>;
+  cancelDocument: (id: string) => Promise<void>;
 }
 
 export const useDocumentStore = create<DocumentState>((set, get) => ({
@@ -92,6 +93,14 @@ export const useDocumentStore = create<DocumentState>((set, get) => ({
       get().fetchDocuments();
     } catch (error) {
       console.error('Failed to retry document', error);
+    }
+  },
+  cancelDocument: async (id: string) => {
+    try {
+      await api.post(`/documents/${id}/cancel`);
+      get().fetchDocuments();
+    } catch (error) {
+      console.error('Failed to cancel document', error);
     }
   },
 }));

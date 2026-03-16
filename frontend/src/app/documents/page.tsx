@@ -14,11 +14,11 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Loader2, Upload, Trash2, RotateCcw, ExternalLink } from 'lucide-react';
+import { Loader2, Upload, Trash2, RotateCcw, ExternalLink, XCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function DocumentsPage() {
-  const { documents, isLoading, fetchDocuments, uploadDocument, deleteDocument, retryDocument } = useDocumentStore();
+  const { documents, isLoading, fetchDocuments, uploadDocument, deleteDocument, retryDocument, cancelDocument } = useDocumentStore();
   const [isUploading, setIsUploading] = useState(false);
 
   useEffect(() => {
@@ -134,6 +134,17 @@ export default function DocumentsPage() {
                             title="Retry Ingestion"
                           >
                             <RotateCcw className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {doc.status !== 'READY' && doc.status !== 'FAILED' && (
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => cancelDocument(doc.id)}
+                            className="text-orange-500 hover:text-orange-600 hover:bg-orange-50 underline-offset-4"
+                            title="Cancel Ingestion"
+                          >
+                            <XCircle className="h-4 w-4" />
                           </Button>
                         )}
                         <Button

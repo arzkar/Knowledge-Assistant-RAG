@@ -63,4 +63,12 @@ export class DocumentsController {
   ) {
     return this.documentsService.retryIngestion(id, user);
   }
+
+  @Post(':id/cancel')
+  async cancel(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: User,
+  ) {
+    return this.documentsService.cancelIngestion(id, user);
+  }
 }

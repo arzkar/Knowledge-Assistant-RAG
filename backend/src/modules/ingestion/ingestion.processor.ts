@@ -70,7 +70,15 @@ export class IngestionProcessor extends WorkerHost {
   private async runPipeline(document: Document): Promise<void> {
     this.logger.log(`Document ${document.id} status: ${document.status}`);
 
+    const checkCancel = async () => {
+      const doc = await this.documentRepository.findOne({ where: { id: document.id } });
+      if (doc?.status === DocumentStatus.FAILED && doc?.error === 'Ingestion cancelled by user') {
+        throw new Error('Ingestion cancelled by user');
+      }
+    };
+
     // Stage 1: FETCH
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.UPLOADED)) {
       if (!fs.existsSync(document.filePath)) {
         throw new Error(`File not found at path: ${document.filePath}`);
@@ -80,6 +88,7 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 2: PARSE
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.FETCHED)) {
       const extracted = await this.doclingService.parse(document.filePath);
       
@@ -100,6 +109,7 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 3: METADATA
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.PARSED)) {
       const blocks = (document.metadata as any).blocks;
       const sampleText = (blocks || []).slice(0, 10).map((b: any) => b.text).join('\n');
@@ -118,6 +128,7 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 4: CHUNK
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.METADATA_DONE)) {
       const blocks = (document.metadata as any).blocks;
       const metadata = document.metadata as any;
@@ -151,6 +162,7 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 5: CONTEXTUALIZE
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.CHUNKED)) {
       // Chunks already have contextText from Stage 4
       await this.updateStatus(document.id, DocumentStatus.CONTEXTUALIZED);
@@ -158,6 +170,7 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 6: EMBED
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.CONTEXTUALIZED)) {
       const chunks = await this.chunkRepository.find({ where: { documentId: document.id } });
       const texts = chunks.map(c => c.contextText);
@@ -172,6 +185,7 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 7: BM25_INDEX
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.EMBEDDED)) {
       const chunks = await this.chunkRepository.find({ where: { documentId: document.id } });
       const bulkChunks = chunks.map(chunk => ({
@@ -187,6 +201,7 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 8: VECTOR_INDEX
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.BM25_INDEXED)) {
       const chunks = await this.chunkRepository.find({ where: { documentId: document.id } });
       const embeddings = (document.metadata as any).embeddings;
@@ -208,6 +223,7 @@ export class IngestionProcessor extends WorkerHost {
     }
 
     // Stage 9: FINALIZE
+    await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.VECTOR_INDEXED)) {
       await this.updateStatus(document.id, DocumentStatus.READY);
       document.status = DocumentStatus.READY;
