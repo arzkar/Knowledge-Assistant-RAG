@@ -21,16 +21,56 @@ import {
 import Link from 'next/link';
 
 const SAGA_STEPS = [
-  { id: DocumentStatus.UPLOADED, label: 'Uploaded', description: 'File received and saved' },
-  { id: DocumentStatus.FETCHED, label: 'Fetched', description: 'File validated for processing' },
-  { id: DocumentStatus.PARSED, label: 'Parsed', description: 'Content extracted via Docling' },
-  { id: DocumentStatus.METADATA_DONE, label: 'Analyzed', description: 'Metadata extracted via LLM' },
-  { id: DocumentStatus.CHUNKED, label: 'Chunked', description: 'Divided into semantic blocks' },
-  { id: DocumentStatus.CONTEXTUALIZED, label: 'Contextualized', description: 'Injected with document context' },
-  { id: DocumentStatus.EMBEDDED, label: 'Embedded', description: 'Vector embeddings generated' },
-  { id: DocumentStatus.BM25_INDEXED, label: 'Keyword Indexed', description: 'Added to OpenSearch' },
-  { id: DocumentStatus.VECTOR_INDEXED, label: 'Vector Indexed', description: 'Added to Qdrant' },
-  { id: DocumentStatus.READY, label: 'Ready', description: 'Fully ingested and searchable' },
+  { 
+    id: DocumentStatus.UPLOADED, 
+    label: 'File Uploaded', 
+    description: 'Wait for ingestion start' 
+  },
+  { 
+    id: DocumentStatus.SCANNING, 
+    label: 'Scanning Document', 
+    description: 'Locating file and verifying integrity' 
+  },
+  { 
+    id: DocumentStatus.EXTRACTING, 
+    label: 'Extracting Structure', 
+    description: 'Identifying headers, tables, and paragraphs' 
+  },
+  { 
+    id: DocumentStatus.ANALYZING, 
+    label: 'Analyzing Content', 
+    description: 'Generating summary and high-level metadata' 
+  },
+  { 
+    id: DocumentStatus.PROCESSING, 
+    label: 'Processing chunks', 
+    description: 'Dividing text into optimized segments' 
+  },
+  { 
+    id: DocumentStatus.ENRICHING, 
+    label: 'Enriching Context', 
+    description: 'Applying situational context to each chunk' 
+  },
+  { 
+    id: DocumentStatus.EMBEDDING, 
+    label: 'Generating Vector Map', 
+    description: 'Converting text into mathematical vectors' 
+  },
+  { 
+    id: DocumentStatus.INDEXING_KEYWORDS, 
+    label: 'Indexing Keywords', 
+    description: 'Building keyword search index' 
+  },
+  { 
+    id: DocumentStatus.INDEXING_CONCEPTS, 
+    label: 'Indexing Concepts', 
+    description: 'Building semantic search index' 
+  },
+  { 
+    id: DocumentStatus.READY, 
+    label: 'Ready for Chat', 
+    description: 'Document is fully processed and searchable' 
+  },
 ];
 
 export default function DocumentDetailPage() {

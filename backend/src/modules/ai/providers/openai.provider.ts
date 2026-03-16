@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import OpenAI from 'openai';
-import { ILLMProvider } from './provider.interface';
+import { ILLMProvider, LLMOptions } from './provider.interface';
 
 @Injectable()
 export class OpenAIProvider implements ILLMProvider {
@@ -26,7 +26,7 @@ export class OpenAIProvider implements ILLMProvider {
   async generate(
     prompt: string,
     systemPrompt?: string,
-    options?: { json?: boolean },
+    options?: LLMOptions,
   ): Promise<string> {
     try {
       const messages: any[] = [];
@@ -39,6 +39,8 @@ export class OpenAIProvider implements ILLMProvider {
         model: this.model,
         messages: messages as any,
         response_format: options?.json ? { type: 'json_object' } : undefined,
+        temperature: options?.temperature,
+        max_tokens: options?.maxTokens,
       });
 
       return response.choices[0].message.content || '';
@@ -53,7 +55,7 @@ export class OpenAIProvider implements ILLMProvider {
   async *stream(
     prompt: string,
     systemPrompt?: string,
-    options?: { json?: boolean },
+    options?: LLMOptions,
   ): AsyncGenerator<string> {
     try {
       const messages: any[] = [];
@@ -67,6 +69,8 @@ export class OpenAIProvider implements ILLMProvider {
         messages: messages as any,
         stream: true,
         response_format: options?.json ? { type: 'json_object' } : undefined,
+        temperature: options?.temperature,
+        max_tokens: options?.maxTokens,
       });
 
       for await (const part of response) {

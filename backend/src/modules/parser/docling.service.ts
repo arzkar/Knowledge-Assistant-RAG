@@ -9,6 +9,7 @@ export interface DocBlock {
   page: number;
   section?: string;
   heading?: boolean;
+  prov?: any[];
 }
 
 @Injectable()
@@ -86,6 +87,7 @@ export class DoclingService {
           page: item.prov && item.prov[0] ? (item.prov[0].page_no as number) : 1,
           section: currentSection,
           heading: isHeading,
+          prov: item.prov,
         });
       }
     } else if (data.document?.md_content || data.md_content) {

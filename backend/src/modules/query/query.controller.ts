@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Sse, MessageEvent, Get, Query as QueryParam } from '@nestjs/common';
+import { Controller, Post, Body, Sse, MessageEvent, Query as QueryParam } from '@nestjs/common';
 import { QueryService } from './query.service';
 import { Observable, map } from 'rxjs';
 

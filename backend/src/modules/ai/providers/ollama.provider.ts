@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Ollama } from 'ollama';
-import { ILLMProvider } from './provider.interface';
+import { ILLMProvider, LLMOptions } from './provider.interface';
 
 @Injectable()
 export class OllamaProvider implements ILLMProvider {
@@ -26,7 +26,7 @@ export class OllamaProvider implements ILLMProvider {
   async generate(
     prompt: string,
     systemPrompt?: string,
-    options?: { json?: boolean },
+    options?: LLMOptions,
   ): Promise<string> {
     try {
       const messages = [];
@@ -42,6 +42,8 @@ export class OllamaProvider implements ILLMProvider {
         stream: false,
         options: {
           num_ctx: 4096,
+          temperature: options?.temperature,
+          num_predict: options?.maxTokens,
         },
       });
 
@@ -62,7 +64,7 @@ export class OllamaProvider implements ILLMProvider {
   async *stream(
     prompt: string,
     systemPrompt?: string,
-    options?: { json?: boolean },
+    options?: LLMOptions,
   ): AsyncGenerator<string> {
     try {
       const messages = [];
@@ -78,6 +80,8 @@ export class OllamaProvider implements ILLMProvider {
         stream: true,
         options: {
           num_ctx: 4096,
+          temperature: options?.temperature,
+          num_predict: options?.maxTokens,
         },
       });
 

@@ -11,7 +11,11 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER:-postgres} -d ${DATABASE_NAME:-rag_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${DATABASE_USER:-postgres} -d ${DATABASE_NAME:-rag_db}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,7 +58,11 @@ services:
       - "OPENSEARCH_INITIAL_ADMIN_PASSWORD=RagAssistant#2026!"
     mem_limit: 1g
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health?local=true || exit 1"]
+      test:
+        [
+          "CMD-SHELL",
+          "curl -f http://localhost:9200/_cluster/health?local=true || exit 1",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -65,6 +73,8 @@ services:
     container_name: docling
     ports:
       - "5001:5001"
+    environment:
+      - DOCLING_SERVE_ENABLE_UI=true
 
   backend:
     build:

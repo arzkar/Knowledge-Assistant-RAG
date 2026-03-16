@@ -9,6 +9,7 @@ export interface ChunkResult {
     page: number;
     section?: string;
     contextualPrefix?: string;
+    prov?: any[];
   };
 }
 
@@ -26,10 +27,11 @@ export class ChunkingService {
   ): Promise<ChunkResult[]> {
     this.logger.log(`Chunking ${blocks.length} blocks...`);
 
-    const rawChunks: { text: string; page: number; section: string }[] = [];
+    const rawChunks: { text: string; page: number; section: string; prov: any[] }[] = [];
     let currentChunkText = '';
     let currentChunkPage = blocks[0]?.page || 1;
     let currentChunkSection = blocks[0]?.section || '';
+    let currentChunkProv: any[] = [];
 
     for (const block of blocks) {
       if (
@@ -40,8 +42,10 @@ export class ChunkingService {
           text: currentChunkText.trim(),
           page: currentChunkPage,
           section: currentChunkSection,
+          prov: currentChunkProv,
         });
         currentChunkText = '';
+        currentChunkProv = [];
       }
 
       if (block.heading && currentChunkText.length > 0) {
@@ -50,8 +54,10 @@ export class ChunkingService {
             text: currentChunkText.trim(),
             page: currentChunkPage,
             section: currentChunkSection,
+            prov: currentChunkProv,
           });
           currentChunkText = '';
+          currentChunkProv = [];
         }
       }
 
@@ -61,6 +67,9 @@ export class ChunkingService {
       }
 
       currentChunkText += (currentChunkText ? '\n' : '') + block.text;
+      if (block.prov) {
+        currentChunkProv.push(...(Array.isArray(block.prov) ? block.prov : [block.prov]));
+      }
     }
 
     if (currentChunkText.trim().length > 0) {
@@ -68,6 +77,7 @@ export class ChunkingService {
         text: currentChunkText.trim(),
         page: currentChunkPage,
         section: currentChunkSection,
+        prov: currentChunkProv,
       });
     }
 
@@ -92,6 +102,7 @@ export class ChunkingService {
           page: raw.page,
           section: raw.section,
           contextualPrefix,
+          prov: raw.prov,
         },
       });
     }

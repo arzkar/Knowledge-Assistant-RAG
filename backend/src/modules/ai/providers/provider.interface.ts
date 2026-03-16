@@ -1,5 +1,7 @@
 export interface LLMOptions {
   json?: boolean;
+  temperature?: number;
+  maxTokens?: number;
 }
 
 export interface ILLMProvider {

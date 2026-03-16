@@ -77,19 +77,19 @@ export class IngestionProcessor extends WorkerHost {
       }
     };
 
-    // Stage 1: FETCH
+    // Stage 1: SCANNING
     await checkCancel();
     if (this.shouldRun(document.status, DocumentStatus.UPLOADED)) {
       if (!fs.existsSync(document.filePath)) {
         throw new Error(`File not found at path: ${document.filePath}`);
       }
-      await this.updateStatus(document.id, DocumentStatus.FETCHED);
-      document.status = DocumentStatus.FETCHED;
+      await this.updateStatus(document.id, DocumentStatus.SCANNING);
+      document.status = DocumentStatus.SCANNING;
     }
 
-    // Stage 2: PARSE
+    // Stage 2: EXTRACTING
     await checkCancel();
-    if (this.shouldRun(document.status, DocumentStatus.FETCHED)) {
+    if (this.shouldRun(document.status, DocumentStatus.SCANNING)) {
       const extracted = await this.doclingService.parse(document.filePath);
       
       if (!extracted || extracted.length === 0) {
@@ -104,13 +104,13 @@ export class IngestionProcessor extends WorkerHost {
       await this.documentRepository.update(document.id, {
         metadata: document.metadata
       });
-      await this.updateStatus(document.id, DocumentStatus.PARSED);
-      document.status = DocumentStatus.PARSED;
+      await this.updateStatus(document.id, DocumentStatus.EXTRACTING);
+      document.status = DocumentStatus.EXTRACTING;
     }
 
-    // Stage 3: METADATA
+    // Stage 3: ANALYZING
     await checkCancel();
-    if (this.shouldRun(document.status, DocumentStatus.PARSED)) {
+    if (this.shouldRun(document.status, DocumentStatus.EXTRACTING)) {
       const blocks = (document.metadata as any).blocks;
       const sampleText = (blocks || []).slice(0, 10).map((b: any) => b.text).join('\n');
       const prompt = `Extract metadata (title, summary, keywords) from this text: \n\n ${sampleText}`;
@@ -123,13 +123,13 @@ export class IngestionProcessor extends WorkerHost {
       await this.documentRepository.update(document.id, {
         metadata: document.metadata
       });
-      await this.updateStatus(document.id, DocumentStatus.METADATA_DONE);
-      document.status = DocumentStatus.METADATA_DONE;
+      await this.updateStatus(document.id, DocumentStatus.ANALYZING);
+      document.status = DocumentStatus.ANALYZING;
     }
 
-    // Stage 4: CHUNK
+    // Stage 4: PROCESSING
     await checkCancel();
-    if (this.shouldRun(document.status, DocumentStatus.METADATA_DONE)) {
+    if (this.shouldRun(document.status, DocumentStatus.ANALYZING)) {
       const blocks = (document.metadata as any).blocks;
       const metadata = document.metadata as any;
       const documentSummary = metadata.summary || '';
@@ -156,22 +156,22 @@ export class IngestionProcessor extends WorkerHost {
       });
       
       await this.chunkRepository.save(chunkEntities);
-      await this.updateStatus(document.id, DocumentStatus.CHUNKED);
-      document.status = DocumentStatus.CHUNKED;
+      await this.updateStatus(document.id, DocumentStatus.PROCESSING);
+      document.status = DocumentStatus.PROCESSING;
       document.chunks = chunkEntities;
     }
 
-    // Stage 5: CONTEXTUALIZE
+    // Stage 5: ENRICHING
     await checkCancel();
-    if (this.shouldRun(document.status, DocumentStatus.CHUNKED)) {
+    if (this.shouldRun(document.status, DocumentStatus.PROCESSING)) {
       // Chunks already have contextText from Stage 4
-      await this.updateStatus(document.id, DocumentStatus.CONTEXTUALIZED);
-      document.status = DocumentStatus.CONTEXTUALIZED;
+      await this.updateStatus(document.id, DocumentStatus.ENRICHING);
+      document.status = DocumentStatus.ENRICHING;
     }
 
-    // Stage 6: EMBED
+    // Stage 6: EMBEDDING
     await checkCancel();
-    if (this.shouldRun(document.status, DocumentStatus.CONTEXTUALIZED)) {
+    if (this.shouldRun(document.status, DocumentStatus.ENRICHING)) {
       const chunks = await this.chunkRepository.find({ where: { documentId: document.id } });
       const texts = chunks.map(c => c.contextText);
       const embeddings = await this.embeddingsService.embedBatch(texts);
@@ -180,13 +180,13 @@ export class IngestionProcessor extends WorkerHost {
       await this.documentRepository.update(document.id, {
         metadata: document.metadata
       });
-      await this.updateStatus(document.id, DocumentStatus.EMBEDDED);
-      document.status = DocumentStatus.EMBEDDED;
+      await this.updateStatus(document.id, DocumentStatus.EMBEDDING);
+      document.status = DocumentStatus.EMBEDDING;
     }
 
-    // Stage 7: BM25_INDEX
+    // Stage 7: INDEXING_KEYWORDS
     await checkCancel();
-    if (this.shouldRun(document.status, DocumentStatus.EMBEDDED)) {
+    if (this.shouldRun(document.status, DocumentStatus.EMBEDDING)) {
       const chunks = await this.chunkRepository.find({ where: { documentId: document.id } });
       const bulkChunks = chunks.map(chunk => ({
         text: chunk.text,
@@ -196,13 +196,13 @@ export class IngestionProcessor extends WorkerHost {
       }));
       
       await this.opensearchService.bulkIndex(bulkChunks);
-      await this.updateStatus(document.id, DocumentStatus.BM25_INDEXED);
-      document.status = DocumentStatus.BM25_INDEXED;
+      await this.updateStatus(document.id, DocumentStatus.INDEXING_KEYWORDS);
+      document.status = DocumentStatus.INDEXING_KEYWORDS;
     }
 
-    // Stage 8: VECTOR_INDEX
+    // Stage 8: INDEXING_CONCEPTS
     await checkCancel();
-    if (this.shouldRun(document.status, DocumentStatus.BM25_INDEXED)) {
+    if (this.shouldRun(document.status, DocumentStatus.INDEXING_KEYWORDS)) {
       const chunks = await this.chunkRepository.find({ where: { documentId: document.id } });
       const embeddings = (document.metadata as any).embeddings;
       
@@ -218,13 +218,13 @@ export class IngestionProcessor extends WorkerHost {
       }));
       
       await this.qdrantService.upsert(points);
-      await this.updateStatus(document.id, DocumentStatus.VECTOR_INDEXED);
-      document.status = DocumentStatus.VECTOR_INDEXED;
+      await this.updateStatus(document.id, DocumentStatus.INDEXING_CONCEPTS);
+      document.status = DocumentStatus.INDEXING_CONCEPTS;
     }
 
     // Stage 9: FINALIZE
     await checkCancel();
-    if (this.shouldRun(document.status, DocumentStatus.VECTOR_INDEXED)) {
+    if (this.shouldRun(document.status, DocumentStatus.INDEXING_CONCEPTS)) {
       await this.updateStatus(document.id, DocumentStatus.READY);
       document.status = DocumentStatus.READY;
       this.logger.log(`Ingestion complete for document: ${document.id}`);
