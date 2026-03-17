@@ -56,19 +56,19 @@ function Navigation() {
           <div className="p-1.5 bg-primary rounded-lg">
             <Leaf className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-bold text-xl tracking-tight">EcoReady AI</span>
+          <span className="font-bold text-xl tracking-tight">Knowledge Assistant AI</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button 
-            variant={pathname === '/documents' ? 'secondary' : 'ghost'} 
+          <Button
+            variant={pathname === '/documents' ? 'secondary' : 'ghost'}
             onClick={() => router.push('/documents')}
             className="flex items-center gap-2 font-medium"
           >
             <Library className="h-4 w-4" />
             Documents
           </Button>
-          <Button 
-            variant={pathname === '/query' ? 'secondary' : 'ghost'} 
+          <Button
+            variant={pathname === '/query' ? 'secondary' : 'ghost'}
             onClick={() => router.push('/query')}
             className="flex items-center gap-2 font-medium"
           >

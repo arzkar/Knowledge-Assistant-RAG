@@ -1,22 +1,28 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { authClient } from '@/lib/auth-client';
-import { useAuthStore } from '@/store/auth';
-import { MessageSquare, ShieldCheck, Zap, ArrowRight, Loader2 } from 'lucide-react';
-import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { authClient } from "@/lib/auth-client";
+import { useAuthStore } from "@/store/auth";
+import {
+  MessageSquare,
+  ShieldCheck,
+  Zap,
+  ArrowRight,
+  Loader2,
+} from "lucide-react";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
 
 const loginSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
+  email: z.string().email("Please enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
 });
 
 export default function LoginPage() {
@@ -27,8 +33,8 @@ export default function LoginPage() {
   const form = useForm<z.infer<typeof loginSchema>>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      email: '',
-      password: '',
+      email: "",
+      password: "",
     },
   });
 
@@ -40,13 +46,13 @@ export default function LoginPage() {
     });
 
     if (error) {
-      setError(error.message || 'Login failed. Please check your credentials.');
+      setError(error.message || "Login failed. Please check your credentials.");
       return;
     }
 
     if (data?.user) {
       setUser({ id: data.user.id, email: data.user.email });
-      router.push('/documents');
+      router.push("/documents");
     }
   }
 
@@ -55,26 +61,37 @@ export default function LoginPage() {
       {/* Brand Section - Hidden on Mobile */}
       <div className="hidden lg:flex lg:w-1/2 relative bg-primary items-center justify-center overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/90 to-slate-900" />
-        <div className="absolute inset-0 opacity-10" 
-             style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} />
-        
+        <div
+          className="absolute inset-0 opacity-10"
+          style={{
+            backgroundImage:
+              "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
+            backgroundSize: "40px 40px",
+          }}
+        />
+
         <div className="relative z-10 px-12 text-primary-foreground max-w-xl">
           <div className="flex items-center gap-3 mb-8">
             <div className="p-2 bg-primary-foreground/10 rounded-xl backdrop-blur-sm border border-primary-foreground/20">
               <MessageSquare className="h-8 w-8" />
             </div>
-            <span className="text-3xl font-bold tracking-tight">EcoReady AI</span>
+            <span className="text-3xl font-bold tracking-tight">
+              Knowledge Assistant AI
+            </span>
           </div>
-          
+
           <h1 className="text-5xl font-extrabold tracking-tight mb-6 leading-tight">
-            Elevate Your Knowledge <br /> 
-            <span className="text-primary-foreground/70">With Production-Style RAG</span>
+            Elevate Your Knowledge <br />
+            <span className="text-primary-foreground/70">
+              With Production-Style RAG
+            </span>
           </h1>
-          
+
           <p className="text-xl text-primary-foreground/80 mb-10 leading-relaxed">
-            Experience the power of contextual chunking, hybrid retrieval, and streaming LLM responses in one seamless platform.
+            Experience the power of contextual chunking, hybrid retrieval, and
+            streaming LLM responses in one seamless platform.
           </p>
-          
+
           <div className="space-y-6">
             <div className="flex items-center gap-4">
               <div className="h-10 w-10 rounded-full bg-primary-foreground/10 flex items-center justify-center border border-primary-foreground/20">
@@ -82,7 +99,9 @@ export default function LoginPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Secure & Private</h3>
-                <p className="text-primary-foreground/60 text-sm">Your data stays local with Ollama support.</p>
+                <p className="text-primary-foreground/60 text-sm">
+                  Your data stays local with Ollama support.
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -91,12 +110,14 @@ export default function LoginPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-lg">Lightning Fast</h3>
-                <p className="text-primary-foreground/60 text-sm">Hybrid search with Qdrant and OpenSearch.</p>
+                <p className="text-primary-foreground/60 text-sm">
+                  Hybrid search with Qdrant and OpenSearch.
+                </p>
               </div>
             </div>
           </div>
         </div>
-        
+
         {/* Decorative elements */}
         <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-primary-foreground/5 blur-3xl" />
         <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-primary-foreground/5 blur-3xl" />
@@ -107,7 +128,9 @@ export default function LoginPage() {
         <div className="w-full max-w-md space-y-8">
           <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
             <MessageSquare className="h-8 w-8 text-primary" />
-            <span className="text-2xl font-bold tracking-tight">EcoReady AI</span>
+            <span className="text-2xl font-bold tracking-tight">
+              Knowledge Assistant AI
+            </span>
           </div>
 
           <div className="text-center lg:text-left">
@@ -117,46 +140,57 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <form method="POST" onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form
+            method="POST"
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="space-y-6"
+          >
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <div className="relative group">
-                  <Input 
-                    id="email" 
-                    type="email" 
+                  <Input
+                    id="email"
+                    type="email"
                     placeholder="name@example.com"
                     className={cn(
                       "h-11 transition-all group-hover:border-primary/50 focus:border-primary",
-                      form.formState.errors.email && "border-destructive"
+                      form.formState.errors.email && "border-destructive",
                     )}
-                    {...form.register('email')} 
+                    {...form.register("email")}
                   />
                 </div>
                 {form.formState.errors.email && (
-                  <p className="text-sm text-destructive font-medium">{form.formState.errors.email.message}</p>
+                  <p className="text-sm text-destructive font-medium">
+                    {form.formState.errors.email.message}
+                  </p>
                 )}
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="password">Password</Label>
-                  <Link href="#" className="text-sm font-medium text-primary hover:underline">
+                  <Link
+                    href="#"
+                    className="text-sm font-medium text-primary hover:underline"
+                  >
                     Forgot password?
                   </Link>
                 </div>
-                <Input 
-                  id="password" 
-                  type="password" 
+                <Input
+                  id="password"
+                  type="password"
                   placeholder="••••••••"
                   className={cn(
                     "h-11 transition-all hover:border-primary/50 focus:border-primary",
-                    form.formState.errors.password && "border-destructive"
+                    form.formState.errors.password && "border-destructive",
                   )}
-                  {...form.register('password')} 
+                  {...form.register("password")}
                 />
                 {form.formState.errors.password && (
-                  <p className="text-sm text-destructive font-medium">{form.formState.errors.password.message}</p>
+                  <p className="text-sm text-destructive font-medium">
+                    {form.formState.errors.password.message}
+                  </p>
                 )}
               </div>
             </div>
@@ -167,9 +201,9 @@ export default function LoginPage() {
               </div>
             )}
 
-            <Button 
-              type="submit" 
-              className="w-full h-11 text-base font-semibold group" 
+            <Button
+              type="submit"
+              className="w-full h-11 text-base font-semibold group"
               disabled={form.formState.isSubmitting}
             >
               {form.formState.isSubmitting ? (
@@ -187,9 +221,9 @@ export default function LoginPage() {
           </form>
 
           <p className="text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link 
-              href="/auth/signup" 
+            Don&apos;t have an account?{" "}
+            <Link
+              href="/auth/signup"
               className="font-semibold text-primary hover:underline underline-offset-4"
             >
               Create an account
@@ -199,7 +233,8 @@ export default function LoginPage() {
 
         {/* Footer info */}
         <div className="absolute bottom-8 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} EcoReady AI. All rights reserved.
+          © {new Date().getFullYear()} Knowledge Assistant AI. All rights
+          reserved.
         </div>
       </div>
     </div>

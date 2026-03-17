@@ -1,4 +1,4 @@
-# EcoReady Knowledge Assistant (Production RAG)
+# Knowledge Assistant (Production RAG)
 
 A high-performance, enterprise-grade Knowledge Assistant engineered with a modular NestJS backend and a real-time Next.js frontend. This project implements advanced RAG (Retrieval-Augmented Generation) patterns including **Contextual Chunking**, **Hybrid Search**, and a **Fault-Tolerant Ingestion Saga**.
 
