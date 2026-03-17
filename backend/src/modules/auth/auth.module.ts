@@ -24,7 +24,7 @@ import { Pool } from 'pg';
           },
           secret: configService.get('BETTER_AUTH_SECRET'),
           baseURL: configService.get('BETTER_AUTH_URL'),
-          trustedOrigins: ['http://localhost:3000'],
+          trustedOrigins: configService.get('BETTER_AUTH_TRUSTED_ORIGINS')?.split(',') || ['http://localhost:3000'],
         });
       },
     },
