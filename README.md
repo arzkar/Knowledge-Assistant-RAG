@@ -61,6 +61,7 @@ To provide a premium user experience, the system streams LLM responses token-by-
 - **Vector DB:** Qdrant (HNSW index, 1536/3072 dims).
 - **Search Engine:** OpenSearch (BM25).
 - **Parser:** IBM Docling (Layout-aware structural parsing).
+- **Runtime:** Bun (Oven).
 
 ### Frontend (Next.js 14)
 

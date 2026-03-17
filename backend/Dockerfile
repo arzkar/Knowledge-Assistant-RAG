@@ -1,21 +1,20 @@
-FROM node:20-alpine AS base
+FROM oven/bun:1.2-alpine AS base
 WORKDIR /app
-COPY package*.json ./
+COPY package.json ./
 
 FROM base AS development
-RUN npm install
+RUN bun install
 COPY . .
 EXPOSE 3001
-# Use npm run which correctly sets up the path to include node_modules/.bin
-CMD ["npm", "run", "start:dev"]
+CMD ["bun", "run", "start:dev"]
 
 FROM base AS builder
-RUN npm install
+RUN bun install
 COPY . .
-RUN npm run build
+RUN bun run build
 
 FROM base AS production
-RUN npm ci --only=production
+RUN bun install --production
 COPY --from=builder /app/dist ./dist
 EXPOSE 3001
-CMD ["node", "dist/main"]
+CMD ["bun", "dist/main.js"]
