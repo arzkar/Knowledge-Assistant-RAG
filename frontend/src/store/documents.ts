@@ -15,12 +15,19 @@ export enum DocumentStatus {
   FAILED = 'FAILED',
 }
 
+interface DocumentMetadata {
+  title?: string;
+  summary?: string;
+  keywords?: string[];
+  [key: string]: unknown;
+}
+
 interface Document {
   id: string;
   originalName: string;
   status: DocumentStatus;
   createdAt: string;
-  metadata?: any;
+  metadata?: DocumentMetadata;
   error?: string | null;
 }
 

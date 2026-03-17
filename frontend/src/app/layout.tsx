@@ -95,7 +95,7 @@ function Navigation() {
 export default function RootLayout({
   children,
 }: {
-  children: React.Node;
+  children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const { user } = useAuthStore();

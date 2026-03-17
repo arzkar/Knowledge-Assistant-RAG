@@ -7,14 +7,7 @@ import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Send, Bot, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import api from '@/lib/api';
-
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+// Accordion imports removed as they are unused
 
 interface Source {
   documentId: string;
@@ -24,7 +17,7 @@ interface Source {
   sourceNumber?: number;
   metadata?: {
     page?: number;
-    prov?: any[];
+    prov?: Record<string, unknown>[];
   }
 }
 
@@ -68,7 +61,7 @@ export default function QueryPage() {
       const response = await fetch(url.toString(), {
         method: 'GET',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${typeof window !== 'undefined' ? localStorage.getItem('token') : ''}`,
         },
       });
 
@@ -105,7 +98,7 @@ export default function QueryPage() {
                 return newMsgs;
               });
             }
-          } catch (e) {
+          } catch {
             // Partial JSON
           }
         }
@@ -148,7 +141,7 @@ export default function QueryPage() {
                         components={{
                           p: ({ children }) => {
                             if (typeof children === 'string' || Array.isArray(children)) {
-                              const process = (child: any): any => {
+                              const process = (child: React.ReactNode): React.ReactNode => {
                                 if (typeof child !== 'string') return child;
                                 const parts = child.split(/(\[\d+\])/g);
                                 return parts.map((part, i) => {
@@ -248,7 +241,7 @@ export default function QueryPage() {
                   <div className="absolute -left-4 top-0 bottom-0 w-1 bg-primary/20 rounded-full group-hover:bg-primary/40 transition-colors" />
                   <div className="p-6 bg-muted/30 rounded-2xl border border-border/50 backdrop-blur-sm">
                     <p className="text-sm leading-relaxed text-foreground italic whitespace-pre-wrap">
-                      "{selectedSource?.text}"
+                      &quot;{selectedSource?.text}&quot;
                     </p>
                   </div>
                 </div>

@@ -15,8 +15,7 @@ import {
   RotateCcw, 
   Trash2,
   FileText,
-  Tags,
-  AlignLeft
+  Tags
 } from 'lucide-react';
 import Link from 'next/link';
 
