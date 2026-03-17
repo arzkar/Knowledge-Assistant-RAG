@@ -109,6 +109,11 @@ This will automatically:
 2.  Start the Docling parsing service.
 3.  Launch the Backend and Frontend.
 
+### 4. Access the Application
+
+- Backend: http://localhost:3001
+- Frontend: http://localhost:3000
+
 ---
 
 ## 🧪 Engineering Quality & Testing
